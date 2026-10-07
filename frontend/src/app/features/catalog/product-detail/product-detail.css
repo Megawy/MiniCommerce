@@ -1,0 +1,9 @@
+.back { display: inline-block; margin-bottom: 1rem; text-decoration: none; }
+.detail { display: grid; gap: 2rem; grid-template-columns: 1fr 280px; }
+.detail__desc { white-space: pre-line; }
+.detail__buy { display: grid; gap: .75rem; align-content: start; padding: 1.25rem; background: var(--surface-2); border-radius: var(--radius); }
+.detail__buy p { margin: 0; }
+.detail__price { font-size: 1.75rem; }
+.detail__buy input { width: 6rem; }
+.badge { text-decoration: none; }
+@media (max-width: 720px) { .detail { grid-template-columns: 1fr; } }

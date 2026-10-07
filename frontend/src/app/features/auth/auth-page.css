@@ -1,0 +1,4 @@
+.auth { max-width: 26rem; margin: 1rem auto; display: grid; gap: 1rem; }
+.auth h1 { margin-bottom: 0; }
+.auth p { margin: 0; }
+.auth__switch { text-align: center; font-size: .95rem; }

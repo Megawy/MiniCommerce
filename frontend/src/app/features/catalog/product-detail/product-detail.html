@@ -1,0 +1,49 @@
+<a routerLink="/products" class="back">← Back to products</a>
+
+@if (product.isLoading()) {
+  <mc-spinner label="Loading product…" />
+} @else if (notFound()) {
+  <div class="empty">
+    <h1>Product not found</h1>
+    <p>It may have been removed or is no longer available.</p>
+    <a routerLink="/products" class="btn btn--primary">Browse products</a>
+  </div>
+} @else if (loadError(); as message) {
+  <mc-alert kind="error">
+    {{ message }}
+    <button type="button" class="btn btn--ghost" (click)="product.reload()">Retry</button>
+  </mc-alert>
+} @else if (product.value(); as p) {
+  <article class="card detail">
+    <div class="detail__main">
+      <a class="badge" [routerLink]="['/products']" [queryParams]="{ category: p.category.slug }">{{ p.category.name }}</a>
+      <h1>{{ p.name }}</h1>
+      <p class="detail__desc">{{ p.description }}</p>
+    </div>
+
+    <aside class="detail__buy" aria-label="Purchase">
+      <p class="price detail__price">{{ p.price | money }}</p>
+      @if (p.stock === 0) {
+        <p><span class="badge badge--danger">Out of stock</span></p>
+      } @else {
+        <p class="muted">{{ p.stock }} in stock</p>
+        <div class="field">
+          <label for="quantity">Quantity</label>
+          <input id="quantity" type="number" min="1" [max]="p.stock" [value]="quantity()"
+                 (change)="setQuantity($any($event.target).value)" />
+        </div>
+      }
+      <button type="button" class="btn btn--primary btn--block" data-testid="add-to-cart"
+              [disabled]="adding() || p.stock === 0" (click)="addToCart()">
+        {{ adding() ? 'Adding…' : 'Add to cart' }}
+      </button>
+
+      @if (added()) {
+        <mc-alert kind="info">Added to your cart. <a routerLink="/cart">View cart</a></mc-alert>
+      }
+      @if (addError(); as message) {
+        <mc-alert kind="error">{{ message }}</mc-alert>
+      }
+    </aside>
+  </article>
+}

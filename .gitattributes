@@ -1,0 +1,4 @@
+# Normalize line endings in the repository; check out with the platform's default.
+* text=auto
+*.sh text eol=lf
+*.png binary

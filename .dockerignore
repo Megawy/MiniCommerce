@@ -1,0 +1,21 @@
+# Keep the build context small and secret-free.
+frontend
+.git
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose*.yml
+.env
+.env.*
+!.env.example
+.venv
+venv
+__pycache__
+*.pyc
+.pytest_cache
+.coverage
+htmlcov
+staticfiles
+.vscode
+.idea
+node_modules

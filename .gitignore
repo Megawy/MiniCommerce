@@ -1,0 +1,30 @@
+# Local configuration and secrets — never commit (.env.example is the template)
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+staticfiles/
+
+# Frontend build output and dependencies (also in frontend/.gitignore)
+node_modules/
+.angular/
+dist/
+
+# Databases, dumps, logs
+*.sqlite3
+*.sql
+*.dump
+*.log
+
+# Editors / OS
+.idea/
+.DS_Store
+Thumbs.db

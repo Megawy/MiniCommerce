@@ -1,0 +1,107 @@
+# Full local stack: Angular (Nginx) + Django (Gunicorn) + Celery worker + PostgreSQL + Redis.
+# Usage: cp .env.example .env && docker compose up --build
+#   http://localhost:4200  Angular app      http://localhost:8000/api  Django REST API
+
+# Shared by `web` and `worker`: same image, same configuration, different command.
+x-app: &app
+  build:
+    context: .
+    args:
+      REQUIREMENTS: dev   # include pytest so `docker compose exec web pytest` works
+  env_file: .env          # SECRET_KEY, ALLOWED_HOSTS, ...
+  environment:
+    # Same DATABASE_URL setting as outside Docker, but the host is the Compose service `db`
+    # (inside a container, `localhost` is the container itself).
+    DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    # Redis service `redis`: DB 0 = Celery broker, DB 1 = Django cache, DB 2 = test suite.
+    CELERY_BROKER_URL: redis://redis:6379/0
+    REDIS_URL: redis://redis:6379/1
+    SECURE_SSL_REDIRECT: "False"   # plain HTTP locally; real deployments keep the default (True)
+    # The browser loads Angular from :4200 (the `frontend` container, or `npm start`) and calls
+    # this API on :8000 — a cross-origin request, so exactly these origins are allowed.
+    CORS_ALLOWED_ORIGINS: http://localhost:4200,http://127.0.0.1:4200
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  restart: unless-stopped
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data   # survives `down`; deleted by `down -v`
+    # No `ports:` — only the app containers need the database (internal network).
+    healthcheck:
+      # -h 127.0.0.1 forces TCP: during first-run init the image's temporary server only
+      # listens on the Unix socket, so a socket check could report "ready" too early.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    # Cache + broker, no RDB/AOF persistence, bounded memory. `volatile-lru` evicts only keys
+    # with a TTL (cache entries, throttle counters) — never the TTL-less Celery queue keys.
+    command: ["redis-server", "--save", "", "--appendonly", "no",
+              "--maxmemory", "128mb", "--maxmemory-policy", "volatile-lru"]
+    # No `ports:` — only the app containers talk to Redis.
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  web:
+    <<: *app
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8000}:8000"   # reachable from this machine only
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health/', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  worker:
+    <<: *app
+    # Same image as web; consumes jobs from Redis DB 0. No ports: nothing connects to it.
+    command: ["celery", "-A", "config", "worker", "--loglevel=INFO", "--concurrency=2"]
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config inspect ping -d celery@$$HOSTNAME --timeout 5 | grep -q pong"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Baked into the Angular bundle. The *browser* calls it, so it is a host URL
+        # (localhost:8000), not the Compose service name `web` (only resolvable inside Docker).
+        API_BASE_URL: ${FRONTEND_API_BASE_URL:-http://localhost:8000/api}
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-4200}:80"   # Nginx serving the compiled app
+    # Starts after the API container; it never talks to db/redis (the browser talks to Django).
+    depends_on:
+      web:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

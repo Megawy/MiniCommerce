@@ -1,0 +1,73 @@
+<header class="page-header">
+  <h1>Products</h1>
+</header>
+
+<form class="filters" role="search" (submit)="onSearch($event, searchBox.value)">
+  <div class="field filters__search">
+    <label for="search">Search</label>
+    <input #searchBox id="search" type="search" name="search" placeholder="Name or description" [value]="search() ?? ''" />
+  </div>
+  <div class="field">
+    <label for="category">Category</label>
+    <select id="category" [value]="category() ?? ''" (change)="setQuery({ category: $any($event.target).value || null })">
+      <option value="">All categories</option>
+      @for (c of categories.value() ?? []; track c.id) {
+        <option [value]="c.slug" [selected]="c.slug === category()">{{ c.name }}</option>
+      }
+    </select>
+  </div>
+  <div class="field">
+    <label for="ordering">Sort by</label>
+    <select id="ordering" (change)="setQuery({ ordering: $any($event.target).value })">
+      @for (o of orderings; track o.value) {
+        <option [value]="o.value" [selected]="o.value === (ordering() || '-created_at')">{{ o.label }}</option>
+      }
+    </select>
+  </div>
+  <button type="submit" class="btn btn--primary filters__go">Search</button>
+</form>
+
+@if (errorMessage(); as message) {
+  <mc-alert kind="error">
+    {{ message }}
+    <button type="button" class="btn btn--ghost" (click)="result.reload()">Retry</button>
+  </mc-alert>
+} @else if (result.isLoading() && !result.hasValue()) {
+  <mc-spinner label="Loading products…" />
+} @else if (result.value(); as data) {
+  <p class="muted results-count" aria-live="polite">
+    {{ data.count }} product{{ data.count === 1 ? '' : 's' }}
+    @if (result.isLoading()) { <span>· updating…</span> }
+  </p>
+
+  @if (data.results.length === 0) {
+    <div class="empty">
+      <h2>No products found</h2>
+      <p>Try a different search or category.</p>
+      @if (filtered()) {
+        <button type="button" class="btn btn--secondary" (click)="clearFilters()">Clear filters</button>
+      }
+    </div>
+  } @else {
+    <ul class="grid" [class.is-stale]="result.isLoading()">
+      @for (p of data.results; track p.id) {
+        <li class="card product">
+          <span class="badge">{{ p.category.name }}</span>
+          <h2 class="product__name"><a [routerLink]="['/products', p.id]">{{ p.name }}</a></h2>
+          <p class="muted product__desc">{{ p.description }}</p>
+          <div class="product__footer">
+            <span class="price">{{ p.price | money }}</span>
+            @if (p.stock === 0) {
+              <span class="badge badge--danger">Out of stock</span>
+            } @else if (p.stock <= 5) {
+              <span class="badge badge--warning">Only {{ p.stock }} left</span>
+            } @else {
+              <span class="badge badge--success">In stock</span>
+            }
+          </div>
+        </li>
+      }
+    </ul>
+    <mc-pager [page]="page()" [count]="data.count" [pageSize]="pageSize" (pageChange)="setQuery({ page: $event })" />
+  }
+}

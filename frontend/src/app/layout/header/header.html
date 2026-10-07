@@ -1,0 +1,52 @@
+<header class="header">
+  <div class="container header__bar">
+    <a routerLink="/" class="brand" aria-label="MiniCommerce home">
+      <span class="brand__mark" aria-hidden="true">M</span>
+      <span>MiniCommerce</span>
+    </a>
+
+    <button
+      type="button"
+      class="btn btn--ghost header__menu"
+      [attr.aria-expanded]="menuOpen()"
+      aria-controls="main-nav"
+      (click)="menuOpen.set(!menuOpen())"
+    >
+      Menu
+    </button>
+
+    <nav id="main-nav" class="nav" [class.nav--open]="menuOpen()" aria-label="Main">
+      <a routerLink="/" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: true }" (click)="menuOpen.set(false)">Home</a>
+      <a routerLink="/products" routerLinkActive="is-active" (click)="menuOpen.set(false)">Products</a>
+      @if (auth.isAuthenticated()) {
+        <a routerLink="/cart" routerLinkActive="is-active" (click)="menuOpen.set(false)"
+           [attr.aria-label]="'Cart, ' + cart.itemCount() + (cart.itemCount() === 1 ? ' item' : ' items')">
+          Cart
+          @if (cart.itemCount() > 0) {
+            <span class="cart-count" data-testid="cart-count" aria-hidden="true">{{ cart.itemCount() }}</span>
+          }
+        </a>
+        <a routerLink="/orders" routerLinkActive="is-active" (click)="menuOpen.set(false)">Orders</a>
+      }
+
+      <span class="nav__spacer"></span>
+
+      <button
+        type="button"
+        class="btn btn--ghost"
+        (click)="theme.toggle()"
+        [attr.aria-label]="theme.theme() === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
+      >
+        {{ theme.theme() === 'dark' ? 'Light' : 'Dark' }}
+      </button>
+
+      @if (auth.isAuthenticated()) {
+        <span class="nav__user" data-testid="current-user">{{ auth.user()?.email ?? 'Signed in' }}</span>
+        <button type="button" class="btn btn--secondary" (click)="logout()">Log out</button>
+      } @else {
+        <a routerLink="/login" class="btn btn--ghost" (click)="menuOpen.set(false)">Log in</a>
+        <a routerLink="/register" class="btn btn--primary" (click)="menuOpen.set(false)">Register</a>
+      }
+    </nav>
+  </div>
+</header>

@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (Django)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: minicommerce
+          POSTGRES_USER: minicommerce
+          POSTGRES_PASSWORD: ci-only-password   # throwaway CI database, not a real credential
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U minicommerce -d minicommerce"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      # Non-secret values for the test run only. Tests use config.settings.test (pytest.ini).
+      SECRET_KEY: ci-insecure-secret-key-for-tests-only
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      DATABASE_URL: postgres://minicommerce:ci-only-password@localhost:5432/minicommerce
+      REDIS_URL: redis://localhost:6379/1   # the test settings switch to Redis DB 2
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements/*.txt
+      - name: Install dependencies
+        run: pip install -r requirements/dev.txt
+      - name: Django system check
+        run: python manage.py check
+      - name: Migrations are up to date
+        run: python manage.py makemigrations --check --dry-run
+      - name: Tests
+        run: pytest -q
+
+  frontend:
+    name: Frontend (Angular)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Unit tests
+        run: npm test -- --watch=false
+      - name: Production build
+        run: npm run build
+
+  docker:
+    name: Docker images build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build API image
+        run: docker build --tag minicommerce-api:ci .
+      - name: Build frontend image
+        run: docker build --tag minicommerce-frontend:ci frontend

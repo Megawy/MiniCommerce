@@ -1,0 +1,67 @@
+<header class="page-header"><h1>Your cart</h1></header>
+
+@if (loading() && !cart()) {
+  <mc-spinner label="Loading your cart…" />
+} @else if (loadError(); as message) {
+  <mc-alert kind="error">
+    {{ message }}
+    <button type="button" class="btn btn--ghost" (click)="reload()">Retry</button>
+  </mc-alert>
+} @else if (cart(); as c) {
+  @if (error(); as message) {
+    <mc-alert kind="error" class="cart__error">{{ message }}</mc-alert>
+  }
+
+  @if (c.items.length === 0) {
+    <div class="empty">
+      <h2>Your cart is empty</h2>
+      <p>Find something you like in the catalog.</p>
+      <a routerLink="/products" class="btn btn--primary">Browse products</a>
+    </div>
+  } @else {
+    <div class="cart">
+      <ul class="cart__items">
+        @for (item of c.items; track item.id) {
+          <li class="card line" data-testid="cart-line">
+            <div class="line__info">
+              <a [routerLink]="['/products', item.product.id]" class="line__name">{{ item.product.name }}</a>
+              <span class="muted">{{ item.product.price | money }} each</span>
+            </div>
+            <div class="qty" role="group" [attr.aria-label]="'Quantity of ' + item.product.name">
+              <button type="button" class="btn btn--secondary" [disabled]="busy() || checkingOut() || item.quantity <= 1"
+                      (click)="changeQuantity(item, -1)" [attr.aria-label]="'Decrease quantity of ' + item.product.name">−</button>
+              <span class="qty__value" data-testid="quantity">{{ item.quantity }}</span>
+              <button type="button" class="btn btn--secondary" [disabled]="busy() || checkingOut()"
+                      (click)="changeQuantity(item, 1)" [attr.aria-label]="'Increase quantity of ' + item.product.name">+</button>
+            </div>
+            <span class="price line__subtotal">{{ item.subtotal | money }}</span>
+            <button type="button" class="btn btn--ghost" [disabled]="busy() || checkingOut()" (click)="remove(item)"
+                    [attr.aria-label]="'Remove ' + item.product.name">Remove</button>
+          </li>
+        }
+      </ul>
+
+      <aside class="card summary" aria-label="Order summary">
+        <div class="summary__row">
+          <span>Total</span>
+          <span class="price summary__total" data-testid="cart-total">{{ c.total | money }}</span>
+        </div>
+        <p class="muted summary__note">Prices and stock are confirmed when you place the order.</p>
+        <button type="button" class="btn btn--primary btn--block" data-testid="checkout"
+                [disabled]="checkingOut() || busy()" (click)="checkout()">
+          {{ checkingOut() ? 'Placing order…' : 'Place order' }}
+        </button>
+        @if (confirmingClear()) {
+          <div class="summary__confirm">
+            <span>Remove all items?</span>
+            <button type="button" class="btn btn--secondary" (click)="clear()" [disabled]="busy()">Yes, clear</button>
+            <button type="button" class="btn btn--ghost" (click)="confirmingClear.set(false)">Cancel</button>
+          </div>
+        } @else {
+          <button type="button" class="btn btn--ghost btn--block" [disabled]="busy() || checkingOut()"
+                  (click)="confirmingClear.set(true)">Clear cart</button>
+        }
+      </aside>
+    </div>
+  }
+}
