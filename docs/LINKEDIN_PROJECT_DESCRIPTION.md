@@ -4,7 +4,7 @@
 MiniCommerce — Full-Stack E-Commerce Platform (Angular, Django REST Framework)
 
 **Project link**
-https://github.com/<your-github-username>/MiniCommerce
+https://github.com/Megawy/MiniCommerce
 
 **Short description** (one line)
 Full-stack e-commerce application with an Angular storefront and a Django REST API on

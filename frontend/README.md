@@ -1,6 +1,6 @@
 # MiniCommerce — Angular frontend
 
-See the main [README](../README.md#frontend) for setup, architecture and the authentication flow.
+See the [developer guide](../docs/DEVELOPMENT.md#frontend) for setup, architecture and the authentication flow.
 
 ```bash
 npm install

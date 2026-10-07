@@ -1,5 +1,7 @@
 # MiniCommerce
 
+[![CI](https://github.com/Megawy/MiniCommerce/actions/workflows/ci.yml/badge.svg)](https://github.com/Megawy/MiniCommerce/actions/workflows/ci.yml)
+
 MiniCommerce is a production-style full-stack e-commerce platform: an Angular storefront on top of
 a Django REST Framework API, backed by PostgreSQL, Redis and a Celery worker, and runnable as one
 Docker Compose stack. It is a portfolio project built to show practical backend engineering —

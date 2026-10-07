@@ -52,7 +52,7 @@ The whole stack (Angular included) is described in [Full Docker Stack](#full-doc
 | `docker compose ps` | status and health of all five services |
 | `docker compose exec web python manage.py migrate` | run Django commands in the container |
 | `docker compose exec web python manage.py seed_demo --password <dev-password>` | demo data (never automatic) |
-| `docker compose exec web pytest` | test suite (uses dev settings, test DB in the `db` container) |
+| `docker compose exec web pytest` | test suite (uses `config.settings.test`, test DB in the `db` container) |
 | `docker compose down -v` | **also deletes the database volume** |
 
 URLs: [health](http://localhost:8000/api/health/) · [Swagger](http://localhost:8000/api/docs/) ·
@@ -67,11 +67,12 @@ URLs: [health](http://localhost:8000/api/health/) · [Swagger](http://localhost:
 
 ## Redis (cache)
 
-Compose runs `redis:7-alpine` as a **cache only** (no persistence, 128 MB, LRU eviction), reachable
-only by `web` at `redis://redis:6379/1`. Outside Docker, leave `REDIS_URL` unset to use an
-in-process cache, or set it to a local Redis.
+Compose runs `redis:7-alpine` with no persistence, 128 MB and `volatile-lru` eviction, reachable only
+inside the Compose network. DB 1 is the Django cache (`redis://redis:6379/1`); DB 0 is the Celery
+broker (see [Background jobs](#background-jobs-celery)). Outside Docker, leave `REDIS_URL` unset to
+use an in-process cache, or set it to a local Redis.
 
-- Django's cache framework (`django-redis`) is the only way the code talks to Redis.
+- Application code reaches the cache only through Django's cache framework (`django-redis`).
 - **DRF throttling** (login/register, 10/min) keeps its counters in that cache, so all Gunicorn
   workers share one limit.
 - **`GET /api/categories/`** is cached for 60 s (key `catalog:categories:v1`); any category write
@@ -82,7 +83,7 @@ in-process cache, or set it to a local Redis.
 - DB 1 = app cache, DB 2 = test suite (`pytest` never clears the app's cache).
 
 ```powershell
-docker compose ps                     # db, redis, web: healthy
+docker compose ps                     # all services healthy
 docker compose logs -f redis
 docker compose exec web python manage.py shell -c "from django.core.cache import cache; cache.set('ping','ok',10); print(cache.get('ping'))"
 ```
@@ -352,6 +353,7 @@ REST API under `/api/` is the public application API.
 ## Settings
 
 - `config.settings.dev` — used by `manage.py` (DEBUG, browsable API)
-- `config.settings.prod` — used by `wsgi.py` / `asgi.py`
+- `config.settings.prod` — used by `wsgi.py` / `asgi.py` and the Docker image (`DEBUG=False`)
+- `config.settings.test` — used by `pytest` (selected in `pytest.ini`)
 
 Override with the `DJANGO_SETTINGS_MODULE` environment variable.

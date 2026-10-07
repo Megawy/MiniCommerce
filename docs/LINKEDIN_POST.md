@@ -35,6 +35,6 @@ It's a portfolio project, not a live shop, and the payment provider is a mock. B
 end to end was a good way to work through transactions, locking, caching and background jobs
 in a codebase small enough to read in an afternoon.
 
-Code, screenshots and architecture notes: [GitHub link]
+Code, screenshots and architecture notes: https://github.com/Megawy/MiniCommerce
 
 #SoftwareEngineering #Django #Angular #Python #PostgreSQL #Redis #Celery #Docker #BackendDevelopment
